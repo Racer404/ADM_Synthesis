@@ -1,0 +1,5 @@
+﻿  Main.cpp
+D:\Vs2022\LFViewSyntheTest\Main.cpp(83,9): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data
+D:\Vs2022\LFViewSyntheTest\Main.cpp(84,9): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data
+D:\Vs2022\LFViewSyntheTest\Main.cpp(117,22): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
+  LFViewSyntheTest.vcxproj -> D:\Vs2022\LFViewSyntheTest\x64\Debug\LFViewSyntheTest.exe
