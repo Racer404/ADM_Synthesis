@@ -1,5 +1,44 @@
 ﻿  Main.cpp
-D:\Vs2022\LFViewSyntheTest\Main.cpp(83,9): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data
-D:\Vs2022\LFViewSyntheTest\Main.cpp(84,9): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data
-D:\Vs2022\LFViewSyntheTest\Main.cpp(117,22): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
+D:\Vs2022\LFViewSyntheTest\Main.cpp(64,39): warning C4244: 'argument': conversion from '_Tp' to 'int', possible loss of data
+          with
+          [
+              _Tp=float
+          ]
+D:\Vs2022\LFViewSyntheTest\Main.cpp(64,29): warning C4244: 'argument': conversion from '_Tp' to 'int', possible loss of data
+          with
+          [
+              _Tp=float
+          ]
+D:\Vs2022\LFViewSyntheTest\Main.cpp(65,39): warning C4244: 'argument': conversion from '_Tp' to 'int', possible loss of data
+          with
+          [
+              _Tp=float
+          ]
+D:\Vs2022\LFViewSyntheTest\Main.cpp(65,29): warning C4244: 'argument': conversion from '_Tp' to 'int', possible loss of data
+          with
+          [
+              _Tp=float
+          ]
+D:\Vs2022\LFViewSyntheTest\Main.cpp(66,39): warning C4244: 'argument': conversion from '_Tp' to 'int', possible loss of data
+          with
+          [
+              _Tp=float
+          ]
+D:\Vs2022\LFViewSyntheTest\Main.cpp(66,29): warning C4244: 'argument': conversion from '_Tp' to 'int', possible loss of data
+          with
+          [
+              _Tp=float
+          ]
+D:\Vs2022\LFViewSyntheTest\Main.cpp(109,9): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data
+D:\Vs2022\LFViewSyntheTest\Main.cpp(110,9): warning C4244: 'initializing': conversion from 'float' to 'int', possible loss of data
+D:\Vs2022\LFViewSyntheTest\Main.cpp(126,66): warning C4244: 'argument': conversion from 'int' to '_Tp', possible loss of data
+          with
+          [
+              _Tp=float
+          ]
+D:\Vs2022\LFViewSyntheTest\Main.cpp(126,31): warning C4244: 'argument': conversion from 'int' to '_Tp', possible loss of data
+          with
+          [
+              _Tp=float
+          ]
   LFViewSyntheTest.vcxproj -> D:\Vs2022\LFViewSyntheTest\x64\Debug\LFViewSyntheTest.exe

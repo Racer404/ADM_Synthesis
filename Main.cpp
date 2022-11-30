@@ -16,17 +16,21 @@ bool btnDown;
 
 struct depthUnit {
 	int depth;
-	Vec2i pos;
+	Point2i pos;
 };
 
 vector<depthUnit> depthMap;
 
+//Point2i MatcoorToXYcoor(int x, int y) {
+//	Point2i result;
+//	result.x=
+//	return 
+//}
 
 bool compareByDepth(const depthUnit& a, const depthUnit& b)
 {
-	return a.depth < b.depth;
+	return a.depth > b.depth;
 }
-
 
 Mat computeNewView(int baseLineFactor, int X, int Y) {
 	Mat newView = Mat(rawDepth.rows, rawDepth.cols, CV_8UC3, Scalar(0, 0, 0));
@@ -37,12 +41,30 @@ Mat computeNewView(int baseLineFactor, int X, int Y) {
 		int depth = depthMap[i].depth;
 		int deltaX = baseLineFactor * Xbaseline / (256 - depth);
 		int deltaY = baseLineFactor * Ybaseline / (256 - depth);
-		int targetX = depthMap[i].pos[0] - deltaX;
-		int targetY = depthMap[i].pos[1] - deltaY;
+		int targetX = depthMap[i].pos.x - deltaX;
+		int targetY = depthMap[i].pos.y - deltaY;
 		if (targetX < newView.cols && targetX>0 && targetY > 0 && targetY < newView.rows) {
-			newView.at<Vec3b>(targetY, targetX)[0] = refImage.at<Vec3b>(depthMap[i].pos[1], depthMap[i].pos[0])[0];
-			newView.at<Vec3b>(targetY, targetX)[1] = refImage.at<Vec3b>(depthMap[i].pos[1], depthMap[i].pos[0])[1];
-			newView.at<Vec3b>(targetY, targetX)[2] = refImage.at<Vec3b>(depthMap[i].pos[1], depthMap[i].pos[0])[2];
+			newView.at<Vec3b>(targetY, targetX)[0] = refImage.at<Vec3b>(depthMap[i].pos.y, depthMap[i].pos.x)[0];
+			newView.at<Vec3b>(targetY, targetX)[1] = refImage.at<Vec3b>(depthMap[i].pos.y, depthMap[i].pos.x)[1];
+			newView.at<Vec3b>(targetY, targetX)[2] = refImage.at<Vec3b>(depthMap[i].pos.y, depthMap[i].pos.x)[2];
+		}
+	}
+	return newView;
+}
+
+Mat computeNewView2(Point3f camPos, float focal) {
+	Mat newView = Mat(rawDepth.rows, rawDepth.cols, CV_8UC3, Scalar(0, 0, 0));
+
+	for (int i = 0; i < depthMap.size(); i++) {
+		if (camPos.z < depthMap[i].depth) {
+			Point2f desPos;
+			desPos.x = (newView.cols/2)+(focal * (depthMap[i].pos.x - camPos.x) / (depthMap[i].depth - camPos.z));
+			desPos.y = (newView.rows/2)-(focal * (depthMap[i].pos.y - camPos.y) / (depthMap[i].depth - camPos.z));
+			if (desPos.x < newView.cols && desPos.x > 0 && desPos.y < newView.rows && desPos.y > 0) {
+				newView.at<Vec3b>(desPos.y, desPos.x)[0] = refImage.at<Vec3b>(newView.rows / 2 - depthMap[i].pos.y, depthMap[i].pos.x + newView.cols / 2)[0];
+				newView.at<Vec3b>(desPos.y, desPos.x)[1] = refImage.at<Vec3b>(newView.rows / 2 - depthMap[i].pos.y, depthMap[i].pos.x + newView.cols / 2)[1];
+				newView.at<Vec3b>(desPos.y, desPos.x)[2] = refImage.at<Vec3b>(newView.rows / 2 - depthMap[i].pos.y, depthMap[i].pos.x + newView.cols / 2)[2];
+			}
 		}
 	}
 	return newView;
@@ -63,7 +85,7 @@ Mat generateESLF(int startPoint[2], int unitSize) {
 	Mat ESLF = Mat(refImage.rows * unitSize, refImage.cols * unitSize, CV_8UC3, Scalar(0, 0, 0));
 	for (int i = 0; i < unitSize; i++) {
 		for (int j = 0; j < unitSize; j++) {
-			fillPieceToESLF(ESLF, computeNewView(50, startPoint[0] + i, startPoint[1] + j), i, j, unitSize);
+			fillPieceToESLF(ESLF, computeNewView(150, startPoint[0] + i, startPoint[1] + j), i, j, unitSize);
 		}
 	}
 
@@ -77,9 +99,9 @@ Mat generateESLF(int startPoint[2], int unitSize) {
 	return ESLF;
 }
 
-vector<Mat> restoreFromESLF(Mat ESLF, int unitSize) {
-
-}
+//vector<Mat> restoreFromESLF(Mat ESLF, int unitSize) {
+//
+//}
 
 vector<Mat> generateSynthesicViewPath(float density, int radius) {
 	vector<Mat> viewList;
@@ -101,7 +123,8 @@ void mouseCallBack(int event, int x, int y, int flags, void* param) {
 	}
 	else if (event == cv::EVENT_MOUSEMOVE) {
 		if (btnDown) {
-			imshow("Synthesic View", computeNewView(10, x, y));
+			Point3f camPos = Point3f(x - rawDepth.cols/2, rawDepth.rows/2 - y, 0);
+			imshow("Synthesic View", computeNewView2(camPos, 40));
 		}
 	}
 }
@@ -109,7 +132,7 @@ void mouseCallBack(int event, int x, int y, int flags, void* param) {
 int main() {
 	srand((int)time(0));
 
-	String inputName = "Sculpture";
+	String inputName = "Sculpture_GT";
 
 	rawDepth = imread(inputName + "/depth.png");
 	refImage = imread(inputName + "/refImage.png");
@@ -118,7 +141,7 @@ int main() {
 	for (int width = 0; width < rawDepth.cols; width++) {
 		for (int height = 0; height < rawDepth.rows; height++)
 		{
-			int leftGrayScale = rawDepth.at<Vec3b>(height, width)[2] * 0.299 + rawDepth.at<Vec3b>(height, width)[1] * 0.387 + rawDepth.at<Vec3b>(height, width)[0] * 0.114;
+			int leftGrayScale = 255-(rawDepth.at<Vec3b>(height, width)[2]);
 			rawDepth.at<Vec3b>(height, width)[0] = leftGrayScale;
 			rawDepth.at<Vec3b>(height, width)[1] = leftGrayScale;
 			rawDepth.at<Vec3b>(height, width)[2] = leftGrayScale;
@@ -126,7 +149,6 @@ int main() {
 	}
 
 	//GENERATING RANDOM DEPTH//
-
 	/*rawDepth = Mat(600, 800, CV_8UC3, Scalar(0, 0, 0));
 
 	for (int i = 0; i < 30; i++) {
@@ -142,28 +164,31 @@ int main() {
 			}
 		}
 	}*/
-
+	//GENERATING RANDOM DEPTH//
 
 
 	for (int i = 0; i < rawDepth.rows; i++) {
 		for (int j = 0; j < rawDepth.cols; j++) {
-			depthMap.push_back({rawDepth.at<Vec3b>(i,j)[0], Vec2i(j,i)});
+			//depthMap.push_back({rawDepth.at<Vec3b>(i,j)[0], Point2i(j,i)});
+			depthMap.push_back({rawDepth.at<Vec3b>(i,j)[0], Point2i(j-rawDepth.cols/2,rawDepth.rows/2-i)});
 		}
 	}
 
 	sort(depthMap.begin(), depthMap.end(), compareByDepth);
 
 	//REAL-TIME VIEWING
-	/*namedWindow("Synthesic View");
+	namedWindow("Synthesic View");
 	imshow("Synthesic View", refImage);
 	imshow("depthView", rawDepth);
-	setMouseCallback("Synthesic View", mouseCallBack);*/
+	setMouseCallback("Synthesic View", mouseCallBack);
 	//REAL-TIME VIEWING
 
-	int startPoint[2] = {refImage.cols / 2,refImage.rows / 2 };
+	//GENERATING ESLF
+	/*int startPoint[2] = {refImage.cols / 2,refImage.rows / 2 };
 	Mat ESLF = generateESLF(startPoint, 8);
 	imshow("ESLF", ESLF);
-	imwrite("./ESLF.png", ESLF);
+	imwrite("./ESLF.png", ESLF);*/
+	//GENERATING ESLF
 
 
 	//GENERATE SYNTHETIC PATH
@@ -176,5 +201,7 @@ int main() {
 	}*/
 	//GENERATE SYNTHETIC PATH
 
+
+	
 	waitKey(0);
 }
