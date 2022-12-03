@@ -2,7 +2,7 @@
 <Project>
   <ProjectOutputs>
     <ProjectOutput>
-      <FullPath>D:\C++ Projects\ADM_Synthesis\x64\Debug\LFViewSyntheTest.exe</FullPath>
+      <FullPath>D:\Vs2022\LFViewSyntheTest\x64\Debug\LFViewSyntheTest.exe</FullPath>
     </ProjectOutput>
   </ProjectOutputs>
   <ContentFiles />
