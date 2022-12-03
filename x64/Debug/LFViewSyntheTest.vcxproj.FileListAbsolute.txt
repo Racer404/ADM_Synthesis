@@ -1,1 +1,2 @@
 D:\Vs2022\LFViewSyntheTest\x64\Debug\LFViewSyntheTest.exe
+D:\C++ Projects\ADM_Synthesis\x64\Debug\LFViewSyntheTest.exe

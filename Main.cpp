@@ -12,6 +12,9 @@ using namespace cv;
 Mat refImage;
 Mat rawDepth;
 bool btnDown;
+bool rightBtnDown;
+Point3f camPos = Point3f(0, 0, 0);
+int focal = 500;
 
 
 struct depthUnit {
@@ -31,6 +34,7 @@ bool compareByDepth(const depthUnit& a, const depthUnit& b)
 {
 	return a.depth > b.depth;
 }
+
 
 Mat computeNewView(int baseLineFactor, int X, int Y) {
 	Mat newView = Mat(rawDepth.rows, rawDepth.cols, CV_8UC3, Scalar(0, 0, 0));
@@ -52,6 +56,7 @@ Mat computeNewView(int baseLineFactor, int X, int Y) {
 	return newView;
 }
 
+int itemp = 0;
 Mat computeNewView2(Point3f camPos, float focal) {
 	Mat newView = Mat(rawDepth.rows, rawDepth.cols, CV_8UC3, Scalar(0, 0, 0));
 
@@ -67,6 +72,11 @@ Mat computeNewView2(Point3f camPos, float focal) {
 			}
 		}
 	}
+	std::ostringstream oss;
+	oss << "frames/" << itemp << ".png";
+	std::string dir = oss.str();
+	imwrite(dir, newView);
+	itemp++;
 	return newView;
 }
 
@@ -78,6 +88,7 @@ Mat fillPieceToESLF(Mat ESLF, Mat piece, int xOfUnit, int yOfUnit, int unitSize)
 			ESLF.at<Vec3b>(j * unitSize + yOfUnit, i * unitSize + xOfUnit)[2] = piece.at<Vec3b>(j, i)[2];
 		}
 	}
+
 	return ESLF;
 }
 
@@ -90,7 +101,6 @@ Mat generateESLF(int startPoint[2], int unitSize) {
 	}
 
 	//FOUR CORNER ONLY
-	
 	/*fillPieceToESLF(ESLF, computeNewView(50, startPoint[0] + 0, startPoint[1] + 0), 0, 0, unitSize);
 	fillPieceToESLF(ESLF, computeNewView(50, startPoint[0] + 0, startPoint[1] + 7), 0, 7, unitSize);
 	fillPieceToESLF(ESLF, computeNewView(50, startPoint[0] + 7, startPoint[1] + 0), 7, 0, unitSize);
@@ -116,17 +126,49 @@ vector<Mat> generateSynthesicViewPath(float density, int radius) {
 void mouseCallBack(int event, int x, int y, int flags, void* param) {
 	if (event == cv::EVENT_LBUTTONDOWN) {
 		btnDown = true;
-		
 	}
 	else if (event == cv::EVENT_LBUTTONUP) {
 		btnDown = false;
 	}
 	else if (event == cv::EVENT_MOUSEMOVE) {
 		if (btnDown) {
-			Point3f camPos = Point3f(x - rawDepth.cols/2, rawDepth.rows/2 - y, 0);
-			imshow("Synthesic View", computeNewView2(camPos, 40));
+			camPos.x = x - rawDepth.cols / 2;
+			camPos.y = rawDepth.rows / 2 - y;
+			imshow("Synthesic View", computeNewView2(camPos, focal));
 		}
 	}
+	else if (event == cv::EVENT_RBUTTONDOWN) {
+		rightBtnDown = true;
+	}
+	else if (event == cv::EVENT_RBUTTONUP) {
+		rightBtnDown = false;
+	}
+	else if (event == cv::EVENT_MOUSEWHEEL) {
+		if (getMouseWheelDelta(flags) > 0) {
+			if (rightBtnDown) {
+				focal = focal + 10;
+				imshow("Synthesic View", computeNewView2(camPos, focal));
+			}
+			else {
+				camPos.z = camPos.z + 10;
+				imshow("Synthesic View", computeNewView2(camPos, focal));
+			}
+		}
+		else {
+			if (rightBtnDown) {
+				focal = focal - 10;
+				if (focal < 1) {
+					focal = 1;
+				}
+				imshow("Synthesic View", computeNewView2(camPos, focal));
+			}
+			else {
+				camPos.z = camPos.z - 10;
+				imshow("Synthesic View", computeNewView2(camPos, focal));
+			}
+		}
+	}
+
 }
 
 int main() {
