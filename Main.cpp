@@ -14,6 +14,7 @@ Mat rawDepth;
 bool btnDown;
 bool rightBtnDown;
 Point3f camPos = Point3f(0, 0, 0);
+Point3f targetPoint = Point3f(0, 0, 50);
 int focal = 500;
 Point2f camOri = Point2f(0, 0);
 
@@ -92,8 +93,8 @@ Mat computeNewView3(Point3f camPos, float focal, Point2f camOri) {
 		float maxCitaXZ = acos(focal / normXZ);
 
 		float absoluteCitaXZ = atan2(pointXZcameraDvalue.y, pointXZcameraDvalue.x);
-		float leftLimitXZ = maxCitaXZ + (3.1415926 / 2 - absoluteCitaXZ);
-		float rightLimitXZ = (3.1415926 / 2 - absoluteCitaXZ) - maxCitaXZ;
+		/*float leftLimitXZ = maxCitaXZ + (3.1415926 / 2 - absoluteCitaXZ);
+		float rightLimitXZ = (3.1415926 / 2 - absoluteCitaXZ) - maxCitaXZ;*/
 
 
 		Point2f pointYZcameraDvalue = Point2f(depthMap[i].pos.y - camPos.y, depthMap[i].depth - camPos.z);
@@ -101,10 +102,10 @@ Mat computeNewView3(Point3f camPos, float focal, Point2f camOri) {
 		float maxCitaYZ = acos(focal / normYZ);
 
 		float absoluteCitaYZ = atan2(pointYZcameraDvalue.y, pointYZcameraDvalue.x);
-		float leftLimitYZ = maxCitaYZ + (3.1415926 / 2 - absoluteCitaYZ);
-		float rightLimitYZ = (3.1415926 / 2 - absoluteCitaYZ) - maxCitaYZ;
+		/*float leftLimitYZ = maxCitaYZ + (3.1415926 / 2 - absoluteCitaYZ);
+		float rightLimitYZ = (3.1415926 / 2 - absoluteCitaYZ) - maxCitaYZ;*/
 
-		if (camOri.x < leftLimitXZ && camOri.x > rightLimitXZ && camOri.y < leftLimitYZ && camOri.y > rightLimitYZ) {
+		//if (camOri.x < leftLimitXZ && camOri.x > rightLimitXZ && camOri.y < leftLimitYZ && camOri.y > rightLimitYZ) {
 			Point2f result;
 			result.x = focal / tan(absoluteCitaXZ + camOri.x);
 			result.y = focal / tan(absoluteCitaYZ + camOri.y);
@@ -118,10 +119,7 @@ Mat computeNewView3(Point3f camPos, float focal, Point2f camOri) {
 				newView.at<Vec3b>(desPos.y, desPos.x)[1] = refImage.at<Vec3b>(newView.rows / 2 - depthMap[i].pos.y, depthMap[i].pos.x + newView.cols / 2)[1];
 				newView.at<Vec3b>(desPos.y, desPos.x)[2] = refImage.at<Vec3b>(newView.rows / 2 - depthMap[i].pos.y, depthMap[i].pos.x + newView.cols / 2)[2];
 			}
-		}
-		else {
-			
-		}
+		//}
 
 	}
 	return newView;
@@ -179,10 +177,13 @@ void mouseCallBack(int event, int x, int y, int flags, void* param) {
 	}
 	else if (event == cv::EVENT_MOUSEMOVE) {
 		if (btnDown) {
-			camOri.x = (float)(x - rawDepth.cols / 2)/100;
-			camOri.y = (float)(rawDepth.rows / 2 - y)/100;
-			printf("camOriX:%f", camOri.x);
-			printf("camOriY:%f", camOri.y);
+			Point3f targetCamDvalue = targetPoint - camPos;
+			float tanX = atan2(targetCamDvalue.x, targetCamDvalue.z);
+			float tanY = atan2(targetCamDvalue.y, targetCamDvalue.z);
+			camOri.x = tanX;
+			camOri.y = tanY;
+			camPos.x = (float)(x - rawDepth.cols / 2);
+			camPos.y = (float)(rawDepth.rows / 2 - y);
 			imshow("Synthesic View", computeNewView3(camPos, focal, camOri));
 		}
 	}
@@ -196,6 +197,7 @@ void mouseCallBack(int event, int x, int y, int flags, void* param) {
 		if (getMouseWheelDelta(flags) > 0) {
 			if (rightBtnDown) {
 				focal = focal + 10;
+				camPos.z = camPos.z - 10;
 				imshow("Synthesic View", computeNewView3(camPos, focal, camOri));
 			}
 			else {
@@ -206,6 +208,7 @@ void mouseCallBack(int event, int x, int y, int flags, void* param) {
 		else {
 			if (rightBtnDown) {
 				focal = focal - 10;
+				camPos.z = camPos.z + 10;
 				if (focal < 1) {
 					focal = 1;
 				}
