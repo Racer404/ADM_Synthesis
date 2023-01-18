@@ -13,8 +13,8 @@ Mat refImage;
 Mat rawDepth;
 bool btnDown;
 bool rightBtnDown;
-Point3f camPos = Point3f(0, 0, 0);
-Point3f targetPoint = Point3f(0, 0, 50);
+Point3f camPos = Point3f(0, 0, -255);
+Point3f targetPoint = Point3f(0, 0, 255);
 int focal = 500;
 Point2f camOri = Point2f(0, 0);
 
@@ -168,6 +168,21 @@ vector<Mat> generateSynthesicViewPath(float density, int radius) {
 	return viewList;
 }
 
+vector<Point3f> generateSynthesicViewPath2(Point3f startingPos, Point3f endingPos, float frames) {
+	Point3f dis = endingPos-startingPos;
+	Point3f changes = dis/frames;
+
+	Point3f currentPos = startingPos;
+	vector<Point3f> OUTPUT;
+
+	for (int i = 0; i < frames; i++) {
+		currentPos = currentPos + changes;
+		OUTPUT.push_back(currentPos);
+	}
+	return OUTPUT;
+}
+
+
 void mouseCallBack(int event, int x, int y, int flags, void* param) {
 	if (event == cv::EVENT_LBUTTONDOWN) {
 		btnDown = true;
@@ -226,7 +241,7 @@ void mouseCallBack(int event, int x, int y, int flags, void* param) {
 int main() {
 	srand((int)time(0));
 
-	String inputName = "Sculpture_GT";
+	String inputName = "Printer";
 
 	rawDepth = imread(inputName + "/depth.png");
 	refImage = imread(inputName + "/refImage.png");
@@ -271,10 +286,10 @@ int main() {
 	sort(depthMap.begin(), depthMap.end(), compareByDepth);
 
 	//REAL-TIME VIEWING
-	namedWindow("Synthesic View");
+	/*namedWindow("Synthesic View");
 	imshow("Synthesic View", refImage);
 	imshow("depthView", rawDepth);
-	setMouseCallback("Synthesic View", mouseCallBack);
+	setMouseCallback("Synthesic View", mouseCallBack);*/
 	//REAL-TIME VIEWING
 
 	//GENERATING ESLF
@@ -295,7 +310,24 @@ int main() {
 	}*/
 	//GENERATE SYNTHETIC PATH
 
+	//GENERATE SYNTHETIC PATH 2
+	vector<Point3f> listView = generateSynthesicViewPath2(Point3f(0, 0, 0),Point3f(20, 200, -255), 100);
+	for (int i = 0; i < listView.size(); i++) {
+		camPos = listView[i];
+		Point3f targetCamDvalue = targetPoint - camPos;
+		float tanX = atan2(targetCamDvalue.x, targetCamDvalue.z);
+		float tanY = atan2(targetCamDvalue.y, targetCamDvalue.z);
+		camOri.x = tanX;
+		camOri.y = tanY;
+		Mat outputImg = computeNewView3(camPos, focal, camOri);
 
+		std::ostringstream oss;
+		oss << "frames/" << i << ".png";
+		std::string dir = oss.str();
+		
+		imwrite(dir, outputImg);
+	}
+	//GENERATE SYNTHETIC PATH 2
 	
 	waitKey(0);
 }
