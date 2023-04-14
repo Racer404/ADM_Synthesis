@@ -5,9 +5,11 @@
 #include <stdio.h>
 #include <vector>
 #include <Windows.h>
-
+#include <iostream>
+#include <filesystem>
 using namespace std;
 using namespace cv;
+namespace fs = std::filesystem;
 
 Mat refImage;
 Mat rawDepth;
@@ -22,9 +24,12 @@ Point2f camOri = Point2f(0, 0);
 struct depthUnit {
 	int depth;
 	Point2i pos;
+	int b;
+	int g;
+	int r;
 };
 
-vector<depthUnit> depthMap;
+vector<depthUnit> pointsCloud;
 
 //Point2i MatcoorToXYcoor(int x, int y) {
 //	Point2i result;
@@ -38,21 +43,22 @@ bool compareByDepth(const depthUnit& a, const depthUnit& b)
 }
 
 
+
 Mat computeNewView(int baseLineFactor, int X, int Y) {
 	Mat newView = Mat(rawDepth.rows, rawDepth.cols, CV_8UC3, Scalar(0, 0, 0));
 	int Xbaseline = X - rawDepth.cols / 2;
 	int Ybaseline = Y - rawDepth.rows / 2;
 
-	for (int i = 0; i < depthMap.size(); i++) {
-		int depth = depthMap[i].depth;
+	for (int i = 0; i < pointsCloud.size(); i++) {
+		int depth = pointsCloud[i].depth;
 		int deltaX = baseLineFactor * Xbaseline / (256 - depth);
 		int deltaY = baseLineFactor * Ybaseline / (256 - depth);
-		int targetX = depthMap[i].pos.x - deltaX;
-		int targetY = depthMap[i].pos.y - deltaY;
+		int targetX = pointsCloud[i].pos.x - deltaX;
+		int targetY = pointsCloud[i].pos.y - deltaY;
 		if (targetX < newView.cols && targetX>0 && targetY > 0 && targetY < newView.rows) {
-			newView.at<Vec3b>(targetY, targetX)[0] = refImage.at<Vec3b>(depthMap[i].pos.y, depthMap[i].pos.x)[0];
-			newView.at<Vec3b>(targetY, targetX)[1] = refImage.at<Vec3b>(depthMap[i].pos.y, depthMap[i].pos.x)[1];
-			newView.at<Vec3b>(targetY, targetX)[2] = refImage.at<Vec3b>(depthMap[i].pos.y, depthMap[i].pos.x)[2];
+			newView.at<Vec3b>(targetY, targetX)[0] = refImage.at<Vec3b>(pointsCloud[i].pos.y, pointsCloud[i].pos.x)[0];
+			newView.at<Vec3b>(targetY, targetX)[1] = refImage.at<Vec3b>(pointsCloud[i].pos.y, pointsCloud[i].pos.x)[1];
+			newView.at<Vec3b>(targetY, targetX)[2] = refImage.at<Vec3b>(pointsCloud[i].pos.y, pointsCloud[i].pos.x)[2];
 		}
 	}
 	return newView;
@@ -64,15 +70,15 @@ int itemp = 0;
 Mat computeNewView2(Point3f camPos, float focal) {
 	Mat newView = Mat(rawDepth.rows, rawDepth.cols, CV_8UC3, Scalar(0, 0, 0));
 
-	for (int i = 0; i < depthMap.size(); i++) {
-		if (camPos.z < depthMap[i].depth) {
+	for (int i = 0; i < pointsCloud.size(); i++) {
+		if (camPos.z < pointsCloud[i].depth) {
 			Point2f desPos;
-			desPos.x = (newView.cols/2)+(focal * (depthMap[i].pos.x - camPos.x) / (depthMap[i].depth - camPos.z));
-			desPos.y = (newView.rows/2)-(focal * (depthMap[i].pos.y - camPos.y) / (depthMap[i].depth - camPos.z));
+			desPos.x = (newView.cols/2)+(focal * (pointsCloud[i].pos.x - camPos.x) / (pointsCloud[i].depth - camPos.z));
+			desPos.y = (newView.rows/2)-(focal * (pointsCloud[i].pos.y - camPos.y) / (pointsCloud[i].depth - camPos.z));
 			if (desPos.x < newView.cols && desPos.x > 0 && desPos.y < newView.rows && desPos.y > 0) {
-				newView.at<Vec3b>(desPos.y, desPos.x)[0] = refImage.at<Vec3b>(newView.rows / 2 - depthMap[i].pos.y, depthMap[i].pos.x + newView.cols / 2)[0];
-				newView.at<Vec3b>(desPos.y, desPos.x)[1] = refImage.at<Vec3b>(newView.rows / 2 - depthMap[i].pos.y, depthMap[i].pos.x + newView.cols / 2)[1];
-				newView.at<Vec3b>(desPos.y, desPos.x)[2] = refImage.at<Vec3b>(newView.rows / 2 - depthMap[i].pos.y, depthMap[i].pos.x + newView.cols / 2)[2];
+				newView.at<Vec3b>(desPos.y, desPos.x)[0] = refImage.at<Vec3b>(newView.rows / 2 - pointsCloud[i].pos.y, pointsCloud[i].pos.x + newView.cols / 2)[0];
+				newView.at<Vec3b>(desPos.y, desPos.x)[1] = refImage.at<Vec3b>(newView.rows / 2 - pointsCloud[i].pos.y, pointsCloud[i].pos.x + newView.cols / 2)[1];
+				newView.at<Vec3b>(desPos.y, desPos.x)[2] = refImage.at<Vec3b>(newView.rows / 2 - pointsCloud[i].pos.y, pointsCloud[i].pos.x + newView.cols / 2)[2];
 			}
 		}
 	}
@@ -87,8 +93,8 @@ Mat computeNewView2(Point3f camPos, float focal) {
 Mat computeNewView3(Point3f camPos, float focal, Point2f camOri) {
 	Mat newView = Mat(rawDepth.rows, rawDepth.cols, CV_8UC3, Scalar(0, 0, 0));
 
-	for (int i = 0; i < depthMap.size(); i++) {
-		Point2f pointXZcameraDvalue = Point2f(depthMap[i].pos.x - camPos.x, depthMap[i].depth - camPos.z);
+	for (int i = 0; i < pointsCloud.size(); i++) {
+		Point2f pointXZcameraDvalue = Point2f(pointsCloud[i].pos.x - camPos.x, pointsCloud[i].depth - camPos.z);
 		float normXZ = sqrt(pow(pointXZcameraDvalue.x, 2) + pow(pointXZcameraDvalue.y, 2));
 		float maxCitaXZ = acos(focal / normXZ);
 
@@ -97,7 +103,7 @@ Mat computeNewView3(Point3f camPos, float focal, Point2f camOri) {
 		float rightLimitXZ = (3.1415926 / 2 - absoluteCitaXZ) - maxCitaXZ;*/
 
 
-		Point2f pointYZcameraDvalue = Point2f(depthMap[i].pos.y - camPos.y, depthMap[i].depth - camPos.z);
+		Point2f pointYZcameraDvalue = Point2f(pointsCloud[i].pos.y - camPos.y, pointsCloud[i].depth - camPos.z);
 		float normYZ = sqrt(pow(pointYZcameraDvalue.x, 2) + pow(pointYZcameraDvalue.y, 2));
 		float maxCitaYZ = acos(focal / normYZ);
 
@@ -115,9 +121,9 @@ Mat computeNewView3(Point3f camPos, float focal, Point2f camOri) {
 			desPos.y = (newView.rows / 2) - result.y;
 
 			if (desPos.x < newView.cols && desPos.x > 0 && desPos.y < newView.rows && desPos.y > 0) {
-				newView.at<Vec3b>(desPos.y, desPos.x)[0] = refImage.at<Vec3b>(newView.rows / 2 - depthMap[i].pos.y, depthMap[i].pos.x + newView.cols / 2)[0];
-				newView.at<Vec3b>(desPos.y, desPos.x)[1] = refImage.at<Vec3b>(newView.rows / 2 - depthMap[i].pos.y, depthMap[i].pos.x + newView.cols / 2)[1];
-				newView.at<Vec3b>(desPos.y, desPos.x)[2] = refImage.at<Vec3b>(newView.rows / 2 - depthMap[i].pos.y, depthMap[i].pos.x + newView.cols / 2)[2];
+				newView.at<Vec3b>(desPos.y, desPos.x)[0] = pointsCloud[i].b;
+				newView.at<Vec3b>(desPos.y, desPos.x)[1] = pointsCloud[i].g;
+				newView.at<Vec3b>(desPos.y, desPos.x)[2] = pointsCloud[i].r;
 			}
 		//}
 
@@ -243,19 +249,38 @@ int main() {
 
 	String inputName = "Printer";
 
-	rawDepth = imread(inputName + "/depth.png");
+	rawDepth = imread(inputName + "/depth.png", IMREAD_GRAYSCALE);
 	refImage = imread(inputName + "/refImage.png");
 
-	//converting to grayscale
+	//Build PointsCloud with Depth+Ref PNGs
 	for (int width = 0; width < rawDepth.cols; width++) {
 		for (int height = 0; height < rawDepth.rows; height++)
 		{
-			int leftGrayScale = 255-(rawDepth.at<Vec3b>(height, width)[2]);
-			rawDepth.at<Vec3b>(height, width)[0] = leftGrayScale;
-			rawDepth.at<Vec3b>(height, width)[1] = leftGrayScale;
-			rawDepth.at<Vec3b>(height, width)[2] = leftGrayScale;
+			pointsCloud.push_back({255 - rawDepth.at<uchar>(height, width), Point2i(width - rawDepth.cols / 2,rawDepth.rows / 2 - height), refImage.at<Vec3b>(height, width)[0],refImage.at<Vec3b>(height, width)[1],refImage.at<Vec3b>(height, width)[2] });
 		}
 	}
+	
+
+	//Build PointsCloud with MPI
+	
+	std::string path = "./MPI";
+	for (const auto& entry : fs::directory_iterator(path)) {
+		String pathStr = entry.path().string();
+		int MPIdepth = stoi(pathStr.substr(6, pathStr.find(".", 6) - 6));
+		
+		Mat MPI = imread(pathStr, IMREAD_UNCHANGED);
+		for (int width = 0; width < MPI.cols; width++) {
+			for (int height = 0; height < MPI.rows; height++) {
+				if (MPI.at<Vec4b>(height, width)[3]!=0) {
+					pointsCloud.push_back({MPIdepth, Point2i(width - MPI.cols / 2,MPI.rows / 2 - height), MPI.at<Vec4b>(height, width)[0],MPI.at<Vec4b>(height, width)[1],MPI.at<Vec4b>(height, width)[2] });
+				}
+			}
+		}
+	}
+	
+	//printf("pointsCloudSize: %d", pointsCloud.size());
+
+	
 
 	//GENERATING RANDOM DEPTH//
 	/*rawDepth = Mat(600, 800, CV_8UC3, Scalar(0, 0, 0));
@@ -275,21 +300,18 @@ int main() {
 	}*/
 	//GENERATING RANDOM DEPTH//
 
+	
 
-	for (int i = 0; i < rawDepth.rows; i++) {
-		for (int j = 0; j < rawDepth.cols; j++) {
-			//depthMap.push_back({rawDepth.at<Vec3b>(i,j)[0], Point2i(j,i)});
-			depthMap.push_back({rawDepth.at<Vec3b>(i,j)[0], Point2i(j-rawDepth.cols/2,rawDepth.rows/2-i)});
-		}
-	}
 
-	sort(depthMap.begin(), depthMap.end(), compareByDepth);
+	sort(pointsCloud.begin(), pointsCloud.end(), compareByDepth);
 
 	//REAL-TIME VIEWING
-	/*namedWindow("Synthesic View");
+	/*
+	namedWindow("Synthesic View");
 	imshow("Synthesic View", refImage);
 	imshow("depthView", rawDepth);
-	setMouseCallback("Synthesic View", mouseCallBack);*/
+	setMouseCallback("Synthesic View", mouseCallBack);
+	*/
 	//REAL-TIME VIEWING
 
 	//GENERATING ESLF
@@ -299,7 +321,7 @@ int main() {
 	imwrite("./ESLF.png", ESLF);*/
 	//GENERATING ESLF
 
-
+	//OUTDATED
 	//GENERATE SYNTHETIC PATH
 	/*vector<Mat> listView = generateSynthesicViewPath(10,200);
 	for (int i = 0; i < listView.size(); i++) {
@@ -311,7 +333,7 @@ int main() {
 	//GENERATE SYNTHETIC PATH
 
 	//GENERATE SYNTHETIC PATH 2
-	vector<Point3f> listView = generateSynthesicViewPath2(Point3f(0, 0, 0),Point3f(20, 200, -255), 100);
+	vector<Point3f> listView = generateSynthesicViewPath2(Point3f(0,0,-500),Point3f(-50, 0, -500), 100);
 	for (int i = 0; i < listView.size(); i++) {
 		camPos = listView[i];
 		Point3f targetCamDvalue = targetPoint - camPos;
